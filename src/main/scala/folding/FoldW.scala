@@ -23,7 +23,7 @@ sealed trait FoldW[A, B, W] { self =>
   // foldr :: (a -> b -> b) -> b -> [a] -> b
   def fold[F[_]](fa: F[A])(implicit F: Foldable[F]): B =
     done(F.foldLeft(fa, begin)(step))
-  Onjoodfsdfa
+dsf
 }
 
 object FoldW {
