@@ -1,7 +1,6 @@
 package folding
 
 import cats._
-
 import scala.language.higherKinds
 
 sealed trait FoldW[A, B, W] { self =>
@@ -12,9 +11,6 @@ sealed trait FoldW[A, B, W] { self =>
 
   def map[C](f: B => C): FoldW[A, C, W] =
     FoldW[A, C, W](step, begin, f compose done)
-
-
-
 
   def ap[C, Z](f: FoldW[A , B => C, Z]): FoldW[A, C, (Z, W)] = {
     def step(x: (Z, W), a: A ): (Z, W) = (f.step(x._1, a), self.step(x._2, a))
@@ -27,9 +23,7 @@ sealed trait FoldW[A, B, W] { self =>
   // foldr :: (a -> b -> b) -> b -> [a] -> b
   def fold[F[_]](fa: F[A])(implicit F: Foldable[F]): B =
     done(F.foldLeft(fa, begin)(step))
-
-  //(a -> b -> a) -> a -> [b] -> a
-  def fold(xs: List[A]): B = self.done(xs.foldLeft(begin)(step))
+  Onjoodfsdfa
 }
 
 object FoldW {
@@ -88,9 +82,6 @@ object Fold {
   def fold[F[_], A, B](f: Fold[A, B])(fa: F[A])(implicit F: Foldable[F]): B =
     f.fold(fa)
 
-  def foldLeft[A, B](fa: Fold[A, B])(xs: List[A]): B =
-    fa.fold(xs)
-
   // Convert a strict left 'Fold' into a scan
   def scan[A, B](fa: Fold[A, B])(xs: List[A]): List[B] = ???
 
@@ -118,6 +109,8 @@ object Fold {
     Fold(x.zero)((b, _) => x.plus(b, x.one))
 
   def length[A]: Fold[A, Int] = genericLength
+
+
 
 }
 
