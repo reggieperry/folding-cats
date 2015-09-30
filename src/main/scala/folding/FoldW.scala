@@ -55,7 +55,6 @@ final case class Fold[A, B](folder: FoldW[A, B, _]) {
   def fold(xs: List[A]): B = folder.fold(xs)
 }
 
-
 object Fold extends FoldInstances1 {
   def apply[A,B](z: B)(f: (B, A) => B): Fold[A, B] =
     Fold(FoldW[A, B, B](f, z, identity))
