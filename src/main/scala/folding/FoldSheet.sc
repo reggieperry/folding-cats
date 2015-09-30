@@ -18,4 +18,5 @@ val gl = genericLength[Long, Long]
 val average2 = (s |@| gl).map(_.toDouble / _.toDouble)
 fold(average2)(1L to 10000000 toList)
 
+
 val average3 = (sum[Long] |@| genericLength[Long, Long]) map (_.toDouble / _.toDouble)
