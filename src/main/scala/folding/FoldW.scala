@@ -1,6 +1,7 @@
 package folding
 
 import cats._
+import scala.collection.GenTraversableOnce
 import scala.language.higherKinds
 import scala.language.existentials
 
@@ -25,8 +26,14 @@ sealed trait FoldW[A, B, W] { self =>
   def fold[F[_]](fa: F[A])(implicit F: Foldable[F]): B =
     done(F.foldLeft(fa, begin)(step))
 
-  //(a -> b -> a) -> a -> [b] -> a
-  def fold(xs: List[A]): B = self.done(xs.foldLeft(begin)(step))
+//  //(a -> b -> a) -> a -> [b] -> a
+//  def fold(xs: List[A]): B = self.done(xs.foldLeft(begin)(step))
+
+  def fold(xs: GenTraversableOnce[A]): B = self.done(xs.foldLeft(begin)(step))
+
+  def foldMap(f: A => W)(implicit W: Monoid[W]): (W, B) => FoldW[A,B, W] = { (w, b) =>
+    FoldW((w, a) => W.combine(w, f(a)), W.empty, done)
+  }
 }
 
 object FoldW {
@@ -52,7 +59,8 @@ final case class Fold[A, B](folder: FoldW[A, B, _]) {
   def map[C](f: B => C): Fold[A, C] = Fold(folder.map(f))
   def ap[C](f: => Fold[A, (B) => C]): Fold[A, C] = Fold(folder.ap(f.folder))
   def fold[F[_]](fa: F[A])(implicit F: Foldable[F]): B = folder.fold(fa)
-  def fold(xs: List[A]): B = folder.fold(xs)
+  def fold(xs: GenTraversableOnce[A]): B = folder.fold(xs)
+
 }
 
 object Fold extends FoldInstances1 {
@@ -80,23 +88,31 @@ object Fold extends FoldInstances1 {
   def fold[F[_], A, B](f: Fold[A, B])(fa: F[A])(implicit F: Foldable[F]): B =
     f.fold(fa)
 
-  def foldLeft[A, B](fa: Fold[A, B])(xs: List[A]): B =
+  def foldLeft[A, B](fa: Fold[A, B])(xs: GenTraversableOnce[A]): B =
     fa.fold(xs)
 
+  def premap[A, B, R](fr: Fold[B, R])(f: A => B): Fold[A, R] =
+    Fold(FoldW.premap(fr.folder)(f))
+
   // Convert a strict left 'Fold' into a scan
-  def scan[A, B](fa: Fold[A, B])(xs: List[A]): List[B] = ???
+  def scan[A, B](fa: Fold[A, B])(xs: List[A]): List[B] =
+    xs.foldLeft(Nil: List[B])((b, a) => fa.map[List[B]](b1 => b1 :: b).fold(List(a)))
 
   // Fold all values withing a container using 'combine' and 'empty on Monoid
-  def monocat[A](implicit M: Monoid[A]): Fold[A, A] = Fold(M.empty)(M.combine)
+  def mconcat[A](implicit M: Monoid[A]): Fold[A, A] = Fold(M.empty)(M.combine)
 
-  // Convert a "foldMap" to a 'Fold'
-  def foldMap[A, B, W](fa: A => W)(fb: W => B)(implicit W: Monoid[W]): Fold[A,B] = ???
+  // return a Fold implemented by mapping A values into B and then combining them using the given Monoid[B] instance.
+  def foldMap[A, B](f: (A) => B)(implicit B: Monoid[B]): Fold[A,B] =
+    Fold(B.empty)((b, a) => B.combine(f(a), b))
 
   // Get the first element of a container or return 'Nothing' if the container is empthy
   def head[A]: Fold[A, Option[A]] = _Fold1(const)
 
   // Get the last element of a container or return 'Nothing' if the container is empthy
   def last[A]: Fold[A, Option[A]] = _Fold1[A](flip(const))
+
+  def any[A](pred: A => Boolean): Fold[A, Boolean] =
+    Fold(false)((b, a) => b || pred(a))
 
   // Computes the sum of all elements
   def sum[A](implicit x: scala.math.Numeric[A]): Fold[A, A] =
@@ -106,10 +122,25 @@ object Fold extends FoldInstances1 {
   def product[A](implicit x: scala.math.Numeric[A]): Fold[A, A] =
     Fold(x.one)(x.times)
 
+  def maximum[A](implicit x: Ordering[A]): Fold[A, Option[A]] =
+    _Fold1(x.max)
+
+  def minimum[A](implicit x: Ordering[A]): Fold[A, Option[A]] =
+    _Fold1(x.min)
+
+  def elem[A](a: A)(implicit x: Eq[A]): Fold[A, Boolean] =
+    any(x.eqv(a, _))
+
+  def find[A](f: A => Boolean): Fold[A, Option[A]] =
+    Fold(None: Option[A]){
+      case (b @ Some(a), _) => b
+      case (None, a)        => if (f(a)) Some(a) else None
+    }
+
   def genericLength[A, B](implicit x: scala.math.Numeric[B]): Fold[A, B] =
     Fold(x.zero)((b, _) => x.plus(b, x.one))
 
-  def length[A]: Fold[A, Int] = genericLength
+  def length[A]: Fold[A, Long] = genericLength
 
 }
 
