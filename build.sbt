@@ -9,10 +9,10 @@ resolvers ++= Seq(
 )
 
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0-M5" cross CrossVersion.full)
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.5.4")
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
 
 
 libraryDependencies += "com.github.mpilquist" %% "simulacrum" % "0.4.0"
 libraryDependencies += "org.typelevel" %% "discipline" % "0.4"
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.5"
-libraryDependencies += "org.spire-math" %% "cats" % "0.2.0"
+libraryDependencies += "org.spire-math" %% "cats" % "0.3.0"
